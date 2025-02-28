@@ -1,0 +1,15 @@
+{
+  "name": "eth-balance-checker",
+  "version": "1.0.0",
+  "description": "Check random ETH addresses balance and transfer if found",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.1",
+    "ethers": "5.7.2",
+    "node-cron": "^3.0.3"
+  },
+  "license": "MIT"
+}
